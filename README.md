@@ -8,7 +8,7 @@ A Discord bot that tracks and displays Wordle statistics for your server. The bo
 - **Slash Commands**: Modern Discord slash command interface for easy interaction.
 - **Comprehensive Stats**: Track total games, wins, losses, win rate, and average guess count.
 - **Leaderboards**: View server rankings sorted by games played, win rate, or average guesses.
-- **Persistent Storage**: Integrates with Supabase for reliable data persistence.
+- **Persistent Storage**: Integrates with Supabase for data persistence.
 - **Historical Processing**: Can scan channel history to collect past Wordle results.
 - **Race Condition Protection**: Handles concurrent messages safely with per-guild locking.
 - **Health Check**: Built-in HTTP server for health monitoring (useful for container deployments).
@@ -18,7 +18,7 @@ A Discord bot that tracks and displays Wordle statistics for your server. The bo
 | Command | Description |
 |---------|-------------|
 | `/stats [user]` | View Wordle statistics for yourself or another user. |
-| `/leaderboard` | Display the server leaderboard. Options to sort by games, win rate, or average guesses. |
+| `/leaderboard [sort_by] [min_games]` | Display the server leaderboard. Sort by games played (default), win rate, or average guesses. `min_games` sets the minimum number of games required to appear (default: 10). |
 | `/setup` | (Admin only) Scan the current channel for historical Wordle messages to populate the database. |
 | `/ping` | Check if the bot is responsive. |
 | `/help` | Display information about available commands. |
