@@ -1,0 +1,16 @@
+services:
+  wordlestatsbot:
+    build: .
+    container_name: wordlestatsbot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Optional: persist logs
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      # Override TEST_GUILD_ID to disable test guild syncing in production
+      # Keep TEST_GUILD_ID in .env for local development, but it will be overridden here
+      - TEST_GUILD_ID=
+
