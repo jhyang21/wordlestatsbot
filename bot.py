@@ -5,6 +5,7 @@ import asyncio
 import logging
 from logging.handlers import RotatingFileHandler
 from typing import Optional, Dict, Any, Literal, Union, List
+from datetime import datetime, timezone
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -177,12 +178,14 @@ def initialize_user_stats(user_id: int, username: str) -> Dict[str, Any]:
     }
 
 
-async def update_user_stats_atomic(result: WordleGameResult) -> None:
+
+async def update_user_stats_atomic(result: WordleGameResult, message_date: datetime) -> None:
     """
     Update user statistics atomically using a Supabase RPC call.
     
     Args:
         result: WordleGameResult object containing game data
+        message_date: The date of the message (timezone-aware)
     """
     if not supabase:
         return
@@ -193,7 +196,8 @@ async def update_user_stats_atomic(result: WordleGameResult) -> None:
             'p_user_id': str(result.user_id),
             'p_username': result.username,
             'p_won': result.won,
-            'p_guesses': result.guesses
+            'p_guesses': result.guesses,
+            'p_message_date': message_date.isoformat()
         }
         
         await execute_supabase(
@@ -757,6 +761,9 @@ async def store_user_stats_in_supabase(
     updated_count = 0
     skipped_count = 0
     
+    # Get current timestamp for last_updated_date (once for all records in this batch)
+    current_timestamp = datetime.now(timezone.utc).isoformat()
+    
     for user_id, stats in stats_summary.items():
         record_uuid = generate_uuid_from_user_id(user_id)
         local_total_games = stats['total_games']
@@ -774,7 +781,8 @@ async def store_user_stats_in_supabase(
                 'losses': stats['losses'],
                 'win_rate': round(stats['win_rate'], 2),
                 'loss_rate': round(stats['loss_rate'], 2),
-                'avg_guess': round(stats['avg_guess'], 2)
+                'avg_guess': round(stats['avg_guess'], 2),
+                'last_updated_date': current_timestamp
             }
             records.append(record)
             added_count += 1
@@ -794,7 +802,8 @@ async def store_user_stats_in_supabase(
                     'losses': stats['losses'],
                     'win_rate': round(stats['win_rate'], 2),
                     'loss_rate': round(stats['loss_rate'], 2),
-                    'avg_guess': round(stats['avg_guess'], 2)
+                    'avg_guess': round(stats['avg_guess'], 2),
+                    'last_updated_date': current_timestamp
                 }
                 records.append(record)
                 updated_count += 1
@@ -1004,14 +1013,23 @@ async def on_message(message: discord.Message):
                         elif is_nobody_got_message:
                             results = await parse_nobody_message_content(message)
                         
+                        if not results:
+                            return
+                        
+                        # Get message creation date (already UTC in discord.py, but ensure it's timezone-aware)
+                        message_date = message.created_at
+                        if message_date.tzinfo is None:
+                            message_date = message_date.replace(tzinfo=timezone.utc)
+                        
                         # Store updated statistics using atomic updates
+                        # The database function handles deduplication based on message_date
                         for result in results:
-                            await update_user_stats_atomic(result)
+                            await update_user_stats_atomic(result, message_date)
                             
                         logger.info(
                             f'Processed new Wordle message from channel '
                             f'{message.channel.id} in guild {guild_id}. '
-                            f'Updated {len(results)} users.'
+                            f'Sent update requests for {len(results)} users.'
                         )
                     except Exception as e:
                         logger.error(
