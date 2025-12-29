@@ -5,7 +5,7 @@ import asyncio
 import logging
 from logging.handlers import RotatingFileHandler
 from typing import Optional, Dict, Any, Literal, Union, List
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -762,7 +762,9 @@ async def store_user_stats_in_supabase(
     skipped_count = 0
     
     # Get current timestamp for last_updated_date (once for all records in this batch)
-    current_timestamp = datetime.now(timezone.utc).isoformat()
+    # CRITICAL: Set to yesterday so that if a new Wordle message comes in today (UTC),
+    # it won't be blocked by the date check.
+    current_timestamp = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
     
     for user_id, stats in stats_summary.items():
         record_uuid = generate_uuid_from_user_id(user_id)
